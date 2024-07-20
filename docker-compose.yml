@@ -1,0 +1,29 @@
+version: '3.7'
+
+services:
+  db:
+    image: postgres:15.3
+    environment:
+      POSTGRES_PASSWORD: maazi
+      POSTGRES_USER: postgres
+      POSTGRES_DB: zain_traders
+    volumes:
+      - ./pgdata:/var/lib/postgresql/data
+    ports:
+      - '5432:5432'
+  node:
+    image: zain_traders_backend
+    environment:
+      PORT: 5000
+      ENV: production
+      DATABASE_URL: postgresql://postgres:maazi@db:5432/zain_traders
+    depends_on:
+      - db
+    ports:
+      - '4000:5000'
+  web:
+    image: zain_traders_frontend
+    depends_on:
+      - node
+    ports:
+      - '3000:5173'

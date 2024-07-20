@@ -1,0 +1,25 @@
+export const PARTY_TYPES = {
+  CUSTOMER: '1',
+  SALESMAN: '2',
+  COMPANY: '3',
+};
+
+export const TRANSACTION_TYPES = {
+  PURCHASE_INVOICE: '1',
+  SALES_INVOICE: '2',
+};
+
+export const AC_TYPE = {
+  SALE_ACCOUNT: '1',
+  CASH_ACCOUNT: '2',
+  CREDIT_ACCOUNT: '3',
+  SALE_RETURN_ACCOUNT: '4',
+  EXPENSE_ACCOUNT: '5',
+  PURCHASE_ACCOUNT: '6',
+};
+
+export const INVOICE_PAYMENT_TYPES = {
+  ON_CASH: 'ON_CASH',
+  ON_CREDIT: 'ON_CREDIT',
+  PARTIAL: 'PARTIAL',
+};

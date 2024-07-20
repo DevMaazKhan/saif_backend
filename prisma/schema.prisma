@@ -1,0 +1,210 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Item {
+  id            String   @id @default(uuid())
+  nameFull      String   @map("name_full")
+  nameShort     String   @map("name_short")
+  purchasePrice Int      @map("purchase_price")
+  salePrice     Int      @map("sale_price")
+  companyID     String   @map("company_id")
+  unitsInCarton String   @map("units_in_carton")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @default(now()) @map("updated_at")
+
+  company                   Party                      @relation(references: [id], fields: [companyID])
+  inventoryTransactionItems InventoryTransactionItem[]
+  stock                     ItemStock[]
+
+  @@map("items")
+}
+
+model ItemStock {
+  id                String   @id @default(uuid())
+  batchNumber       String   @map("batch_number")
+  purchasePrice     String   @map("purchase_price")
+  salePrice         String   @map("sale_price")
+  manufactureDate   DateTime @map("manufacture_date")
+  transactionNumber String   @map("transaction_number")
+  transactionDate   DateTime @map("transaction_date")
+  balanceComQty     Int      @map("balance_com_quantity")
+  balanceBonusQty   Int      @map("balance_bonus_quantity")
+  receivedComQty    Int      @map("received_com_quantity")
+  receivedBonusQty  Int      @map("received_bonus_quantity")
+  itemID            String   @unique @map("item_id")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @default(now()) @map("updated_at")
+
+  item Item @relation(references: [id], fields: [itemID])
+
+  @@map("item_stocks")
+}
+
+model Party {
+  id        String   @id @default(uuid())
+  nameFull  String   @map("name_full")
+  nameShort String   @map("name_short")
+  email1    String?  @map("email_1")
+  email2    String?  @map("email_2")
+  email3    String?  @map("email_3")
+  phone1    String?  @map("phone_1")
+  phone2    String?  @map("phone_2")
+  phone3    String?  @map("phone_3")
+  address   String?  @map("address")
+  areaID    String?  @map("area_id")
+  type      String   @map("type")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @map("updated_at")
+
+  items                         Item[]
+  area                          Area?                  @relation(fields: [areaID], references: [id])
+  salesmanCustomer              SalesmanCustomer[]     @relation(name: "salesmanCustomers")
+  customerSalesman              SalesmanCustomer[]     @relation(name: "customerSalesman")
+  inventoryTransactions         InventoryTransaction[] @relation(name: "inventoryTransactions")
+  salesmanInventoryTransactions InventoryTransaction[] @relation(name: "salesmanTransactions")
+  accountTransactions           AccountTransaction[]
+
+  @@map("parties")
+}
+
+model SalesmanCustomer {
+  id         String   @id @default(uuid())
+  salesmanID String   @unique @map("salesman_id")
+  customerID String   @unique @map("customer_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @default(now()) @map("updated_at")
+
+  salesman Party @relation(name: "salesmanCustomers", fields: [salesmanID], references: [id])
+  customer Party @relation(name: "customerSalesman", fields: [customerID], references: [id])
+
+  @@unique([salesmanID, customerID])
+  @@map("salesman_customers")
+}
+
+model Area {
+  id        String   @id @default(uuid())
+  name      String   @unique @map("name")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @map("updated_at")
+
+  parties Party[]
+
+  @@map("areas")
+}
+
+model InventoryTransaction {
+  id                String   @id @default(uuid())
+  transactionNo     String   @map("transaction_no")
+  transactionDate   DateTime @map("transaction_date")
+  transactionType   String   @map("transaction_type")
+  partyID           String   @map("party_id")
+  areaID            String?  @map("area_id")
+  salesmanID        String?  @map("salesman_id")
+  promoID           String?  @map("promo_id")
+  cashAmount        Int      @map("cash_amount")
+  creditAmount      Int      @map("credit_amount")
+  balanceAmount     Int      @map("intAmount")
+  transactionAmount Int      @map("transaction_amount")
+  discountAmount    Int      @map("discount_amount")
+  netAmount         Int      @map("net_amount")
+  narration         String   @map("narration")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @default(now()) @map("updated_at")
+
+  party    Party  @relation(name: "inventoryTransactions", fields: [partyID], references: [id])
+  salesman Party? @relation(name: "salesmanTransactions", fields: [salesmanID], references: [id])
+
+  inventoryTransactionItems InventoryTransactionItem[]
+
+  @@map("inventory_transaction")
+}
+
+model InventoryTransactionItem {
+  id            String   @id @default(uuid())
+  price         Int      @map("price")
+  comQty        Int      @map("com_qty")
+  bonusQty      Int      @map("bonus_qty")
+  total         Int      @map("total")
+  itemID        String   @map("item_id")
+  transactionID String   @map("transaction_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @default(now()) @map("updated_at")
+
+  inventoryTransaction InventoryTransaction @relation(fields: [transactionID], references: [id])
+  item                 Item                 @relation(fields: [itemID], references: [id])
+
+  @@map("inventory_transaction_items")
+}
+
+model AccountTransaction {
+  id            String  @id @default(uuid())
+  transactionID String? @map("transaction_id")
+  partyID       String? @map("party_id")
+  accountID     String  @map("account_id")
+  acType        String
+  credit        Int     @map("credit")
+  debit         Int     @map("debit")
+  narration     String? @map("narration")
+
+  account COA    @relation(fields: [accountID], references: [id])
+  party   Party? @relation(fields: [partyID], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @map("updated_at")
+
+  @@map("account_transaction")
+}
+
+model COA {
+  id        String   @id @default(uuid())
+  acName    String   @map("acName")
+  acType    String   @map("ac_type")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @map("updated_at")
+
+  accountTransaction AccountTransaction[]
+
+  @@map("coa")
+}
+
+model Lookup {
+  id                String   @id @default(uuid())
+  lookupType        String   @map("lookup_type")
+  lookupTypeID      String   @map("lookup_type_id")
+  lookupOrder       String   @map("lookup_order")
+  lookupDescription String   @map("lookup_description")
+  lookupValueFull   String   @map("lookup_value_full")
+  lookupValueShort  String   @map("lookup_value_short")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @default(now()) @map("updated_at")
+
+  @@map("lookup")
+}
+
+model DocumentCounter {
+  id               String   @id @default(uuid())
+  transactionType  String   @unique @map("transaction_type")
+  start            Int      @map("start")
+  increment        Int      @map("increment")
+  availableNo      Int      @map("available_no")
+  isLeftPadded     Boolean? @map("is_left_padded")
+  paddingCharacter String?  @map("padding_character")
+  separator        String?  @map("separator")
+  length           Int?     @map("length")
+  prefix           String?  @map("prefix")
+  postfix          String?  @map("postfix")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @map("updated_at")
+
+  @@map("document_counter")
+}
