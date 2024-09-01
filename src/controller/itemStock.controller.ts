@@ -20,12 +20,19 @@ class ItemStockController {
       where: {
         itemID,
       },
+      include: {
+        item: {
+          select: {
+            salePrice: true,
+          },
+        },
+      },
     });
 
     const itemStock = {
       comQty: stock?.balanceComQty || 0,
       bonusQty: stock?.balanceBonusQty || 0,
-      salePrice: stock?.salePrice || 0,
+      salePrice: (stock as any)?.item?.salePrice || 0,
       purchasePrice: stock?.purchasePrice || 0,
     };
 
