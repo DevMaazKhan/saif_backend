@@ -480,7 +480,7 @@ class InventoryTransactionController {
 
     const transaction = await this.inventoryTransactionService.create({
       transactionNo: transactionNumber,
-      transactionDate: new Date(),
+      transactionDate: moment(body.date, 'YYYY-MM-DD').utc().toDate(),
       transactionType: TRANSACTION_TYPES.PURCHASE_INVOICE,
       partyID: body.companyID,
       promoID: null,
