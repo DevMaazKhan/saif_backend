@@ -75,7 +75,13 @@ class PartyService {
   async update(body: UpdatePartyPayload, where: PartyUniqueFindPayload) {
     console.log(this.moduleName);
 
-    const result = await PartyModel.update({ data: body, where });
+    const result = await PartyModel.update({
+      data: body,
+      where,
+      include: {
+        customerSalesman: true,
+      },
+    });
 
     return result;
   }

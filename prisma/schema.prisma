@@ -77,16 +77,15 @@ model Party {
 }
 
 model SalesmanCustomer {
-  id         String   @id @default(uuid())
-  salesmanID String   @unique @map("salesman_id")
-  customerID String   @unique @map("customer_id")
+  salesmanID String   @map("salesman_id")
+  customerID String   @map("customer_id")
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @default(now()) @map("updated_at")
 
   salesman Party @relation(name: "salesmanCustomers", fields: [salesmanID], references: [id])
   customer Party @relation(name: "customerSalesman", fields: [customerID], references: [id])
 
-  @@unique([salesmanID, customerID])
+  @@id([salesmanID, customerID])
   @@map("salesman_customers")
 }
 

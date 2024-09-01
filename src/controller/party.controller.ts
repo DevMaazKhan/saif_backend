@@ -89,7 +89,7 @@ class PartyController {
       where: {
         type: PARTY_TYPES.CUSTOMER,
         customerSalesman: {
-          every: {
+          some: {
             salesmanID: req.params.salesmanID,
           },
         },
@@ -240,14 +240,24 @@ class PartyController {
     );
 
     if (party.type === PARTY_TYPES.CUSTOMER && body.salesmanID) {
-      await this.salesmanCustomerService.update(
-        {
-          salesmanID: body.salesmanID,
-        },
-        {
+      if (party.customerSalesman.length === 0) {
+        await this.salesmanCustomerService.create({
           customerID: party.id,
-        }
-      );
+          salesmanID: body.salesmanID,
+        });
+      } else {
+        await this.salesmanCustomerService.update(
+          {
+            salesmanID: body.salesmanID,
+          },
+          {
+            salesmanID_customerID: {
+              customerID: party.id,
+              salesmanID: party.customerSalesman[0].salesmanID,
+            },
+          }
+        );
+      }
     }
 
     res.status(200).send({ message: 'Created', party });
