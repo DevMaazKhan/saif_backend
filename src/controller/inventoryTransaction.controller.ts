@@ -4,6 +4,7 @@
 /* eslint-disable no-param-reassign */
 import { Response } from 'express';
 import moment from 'moment';
+import lodash from 'lodash';
 import {
   DocumentCounterService,
   InventoryTransactionService,
@@ -20,7 +21,6 @@ import {
 } from '../util/setup';
 import ItemStockAction from '../action/itemStock.action';
 import asyncHandler from '../middleware/asyncHandler';
-import lodash from 'lodash';
 
 class InventoryTransactionController {
   private inventoryTransactionService: InventoryTransactionService;
@@ -655,7 +655,7 @@ class InventoryTransactionController {
 
     const transaction = await this.inventoryTransactionService.create({
       transactionNo: transactionNumber,
-      transactionDate: new Date(),
+      transactionDate: moment(body.date, 'YYYY-MM-DD').utc().toDate(),
       transactionType: TRANSACTION_TYPES.SALES_INVOICE,
       partyID: customer.id || '',
       promoID: null,
