@@ -433,7 +433,7 @@ class InventoryTransactionController {
       orderBy: {
         createdAt: 'desc',
       },
-      take: 20,
+      take: 1000,
     });
 
     res.status(200).send({
@@ -592,7 +592,7 @@ class InventoryTransactionController {
       orderBy: {
         createdAt: 'desc',
       },
-      take: 20,
+      take: 1000,
     });
 
     res.status(200).send({
