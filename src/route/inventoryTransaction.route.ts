@@ -38,6 +38,10 @@ class InventoryTransactionRoute {
       '/customer/return',
       this.inventoryTransaction.customerSaleReturn
     );
+    this.route.post(
+      '/purchaseReturn',
+      this.inventoryTransaction.createPurchaseReturn
+    );
 
     this.route
       .route('/purchaseInvoice')

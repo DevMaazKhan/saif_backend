@@ -7,6 +7,7 @@ export const PARTY_TYPES = {
 export const TRANSACTION_TYPES = {
   PURCHASE_INVOICE: '1',
   SALES_INVOICE: '2',
+  PURCHASE_RETURN: '3',
 };
 
 export const AC_TYPE = {

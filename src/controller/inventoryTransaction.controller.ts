@@ -886,6 +886,7 @@ class InventoryTransactionController {
   customerSaleReturn = asyncHandler(async (req: any, res: Response) => {
     const { customerID, lineItems } = req.body;
 
+    // check customer exists
     const customer = await this.partyService.findOne({
       where: {
         id: customerID,
@@ -895,6 +896,7 @@ class InventoryTransactionController {
 
     if (!customer) throw Error('Customer not found!');
 
+    // loop through items and increase stock of each Item
     for (let i = 0; i < lineItems.length; i++) {
       const lineItem = lineItems[i];
 
@@ -909,11 +911,13 @@ class InventoryTransactionController {
       });
     }
 
+    // Calculate total return amount
     const amount = lineItems.reduce(
       (prev: number, curr: any) => (prev += curr.price * curr.comQty),
       0
     );
 
+    // adding transaction in sale return account against customer ( adding total amount in sale return account )
     const returnAccount = await this.coaService.findOne({
       id: AC_TYPE.SALE_RETURN_ACCOUNT,
     });
@@ -930,6 +934,7 @@ class InventoryTransactionController {
       narration: null,
     });
 
+    // adding transaction in sale return account against customer ( removing total amount from sale account )
     const saleAccount = await this.coaService.findOne({
       id: AC_TYPE.SALE_ACCOUNT,
     });
@@ -946,6 +951,15 @@ class InventoryTransactionController {
       narration: null,
     });
 
+    // calculating customer credit and cash account balance
+    // if customer credit is 0 than return amount is removed from customer cash account
+    // if customer credit is greater than 0 than cashAmount is calculated by subtracting credit amount from return amount
+    // totalCashAmount = 5000
+    // totalCreditAmount = 1000
+    // totalReturnAmount = 2000
+
+    // totalCashAmount = 4000
+    // totalCreditAmount = 0
     let cashAmount = 0;
 
     const customerCredit = await this.accountTransactionService.find({
@@ -971,7 +985,7 @@ class InventoryTransactionController {
         creditAmount = amount;
       }
 
-      if (totalCustomerCredit > 0) {
+      if (creditAmount > 0) {
         const creditAccount = await this.coaService.findOne({
           id: AC_TYPE.CREDIT_ACCOUNT,
         });
@@ -1009,6 +1023,160 @@ class InventoryTransactionController {
         narration: null,
       });
     }
+
+    res.status(200).send({
+      message: 'Created',
+      undefined,
+    });
+  });
+
+  createPurchaseReturn = asyncHandler(async (req: any, res: Response) => {
+    const { body } = req;
+
+    // companyID
+    // lineItems [comQty, itemID, purchasePrice, salePrice]
+
+    // check company exists
+    const company = await this.partyService.findOne({
+      where: {
+        id: body.companyID,
+        type: PARTY_TYPES.COMPANY,
+      },
+    });
+
+    if (!company) throw Error('Company not found!');
+
+    const transactionNumber =
+      await this.documentCounterService.getNextDocumentNumber({
+        transactionType: TRANSACTION_TYPES.PURCHASE_RETURN,
+      });
+
+    if (!transactionNumber)
+      throw Error('Transaction number can not be generated!');
+
+    if (body.lineItems.length === 0)
+      throw Error('At least one item is required!');
+
+    const totalPurchaseReturnAmount = body.lineItems.reduce(
+      (prev: number, curr: any) => (prev += curr.purchasePrice * curr.comQty),
+      0
+    );
+
+    const transaction = await this.inventoryTransactionService.create({
+      transactionNo: transactionNumber,
+      transactionDate: new Date(),
+      transactionType: TRANSACTION_TYPES.PURCHASE_RETURN,
+      partyID: body.companyID,
+      promoID: null,
+      areaID: null,
+      salesmanID: null,
+      narration: 'Purchase Return',
+      discountAmount: 0,
+      balanceAmount: +totalPurchaseReturnAmount,
+      netAmount: +totalPurchaseReturnAmount,
+      transactionAmount: +totalPurchaseReturnAmount,
+      cashAmount: 0,
+      creditAmount: 0,
+      inventoryTransactionItems: body.lineItems.map((item: any) => ({
+        bonusQty: 0,
+        comQty: +item.comQty,
+        itemID: item.itemID,
+        price: +item.purchasePrice,
+        total: +(item.comQty * item.purchasePrice),
+      })),
+    });
+
+    for (let i = 0; i < body.lineItems.length; i++) {
+      const lineItem = body.lineItems[i];
+
+      await this.itemStockAction.decreaseItemStockQty({
+        balanceBonusQty: 0,
+        balanceComQty: lineItem.comQty,
+        itemID: lineItem.itemID,
+        purchasePrice: lineItem.purchaseProce,
+        salePrice: lineItem.salePrice,
+        transactionDate: new Date(),
+        transactionNumber,
+      });
+    }
+
+    const companyCreditTransactions = await this.accountTransactionService.find(
+      {
+        where: {
+          acType: AC_TYPE.CASH_ACCOUNT,
+          transactionID: body.companyID,
+        },
+      }
+    );
+
+    const totalCompanyCreditAmount = companyCreditTransactions.reduce(
+      (prev, curr) => prev + (curr.credit ? curr.credit : -curr.debit),
+      0
+    );
+
+    let cashAmount = 0;
+
+    if (totalCompanyCreditAmount > 0) {
+      cashAmount = totalPurchaseReturnAmount - totalCompanyCreditAmount;
+
+      let creditAmount = 0;
+
+      if (+cashAmount > 0) {
+        creditAmount = totalCompanyCreditAmount;
+      } else {
+        creditAmount = totalPurchaseReturnAmount;
+      }
+
+      const creditAccount = await this.coaService.findOne({
+        id: AC_TYPE.CREDIT_ACCOUNT,
+      });
+
+      if (!creditAccount) throw Error('Credit Account is not defined!');
+
+      await this.accountTransactionService.create({
+        accountID: creditAccount.id,
+        acType: creditAccount.acType,
+        partyID: body.companyID,
+        transactionID: transaction.id,
+        credit: 0,
+        debit: +creditAmount,
+        narration: null,
+      });
+    } else {
+      cashAmount = totalPurchaseReturnAmount;
+    }
+
+    const cashAccount = await this.coaService.findOne({
+      id: AC_TYPE.CASH_ACCOUNT,
+    });
+
+    if (!cashAccount) throw Error('Cash Account is not defined!');
+
+    await this.accountTransactionService.create({
+      accountID: cashAccount.id,
+      acType: cashAccount.acType,
+      partyID: body.companyID,
+      transactionID: transaction.id,
+      credit: 0,
+      debit: +cashAmount,
+      narration: null,
+    });
+
+    const purchaseAccount = await this.coaService.findOne({
+      id: AC_TYPE.PURCHASE_ACCOUNT,
+    });
+
+    if (!purchaseAccount) throw Error('Purchase Account is not defined!');
+
+    await this.accountTransactionService.create({
+      accountID: purchaseAccount.id,
+      acType: purchaseAccount.acType,
+      partyID: body.companyID,
+      transactionID: transaction.id,
+      credit: 0,
+      debit: +totalPurchaseReturnAmount,
+      narration: null,
+    });
 
     res.status(200).send({
       message: 'Created',
